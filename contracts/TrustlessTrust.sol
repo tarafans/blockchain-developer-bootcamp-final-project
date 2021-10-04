@@ -6,6 +6,14 @@ import "@openzeppelin/contracts/token/ERC721/presets/ERC721PresetMinterPauserAut
 
 contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
 
+    event LogDeposit(address indexed actor, uint indexed tokenId);
+    event LogWithdrawal(address indexed actor, uint indexed tokenId);
+    event LogInsufficientBalance(address indexed tokenAddress, address indexed actor, uint indexed tokenId);
+    event LogWithdrawalError(address indexed tokenAddress, address indexed actor, uint indexed tokenId);
+
+    // Token id => ERC20 address => ERC20 balance
+    mapping(uint => mapping(address => uint)) tokenBalances;
+
     constructor() ERC721PresetMinterPauserAutoId(
         "TLT",
         "Trustless Trust",
@@ -13,12 +21,57 @@ contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
     )
     {}
 
-    function create(address[] memory assetAddresses, uint[] memory assetAmounts) public {
+    modifier onlyTokenOwner(uint tokenId) {
+        require(ownerOf(tokenId) == msg.sender, "Only the owner can modify their assets");
+        _;
+    }
+
+    function deposit(uint tokenId, address[] memory assetAddresses, uint[] memory assetAmounts) public 
+        onlyTokenOwner(tokenId) {
         require(assetAddresses.length == assetAmounts.length, "Number of assets and number of amounts must be equal");
         uint assetLength = assetAddresses.length;
-        for (uint i=0; i<assetLength; i++) {
+        for (uint i = 0; i < assetLength; i++) {
             ERC20 erc20 = ERC20(assetAddresses[i]);
             require(erc20.transferFrom(msg.sender, address(this), assetAmounts[i]));
+            tokenBalances[tokenId][assetAddresses[i]] += assetAmounts[i];
         }
+
+        emit LogDeposit(msg.sender, tokenId);
+    }
+
+    function withdraw(uint tokenId, address[] memory assetAddresses, uint[] memory assetAmounts) public 
+        onlyTokenOwner(tokenId) {
+        
+        require(assetAddresses.length == assetAmounts.length, "Number of assets and number of amounts must be equal");
+        for (uint i = 0; i < assetAddresses.length; i++) {
+            // Prevent reentrancy
+            uint oldBalance = tokenBalances[tokenId][assetAddresses[i]];
+            tokenBalances[tokenId][assetAddresses[i]] = 0;
+
+            if (tokenBalances[tokenId][assetAddresses[i]] <= assetAmounts[i]) {
+                emit LogInsufficientBalance(assetAddresses[i], msg.sender, tokenId);
+            } else if (assetAddresses[i] != address(0)) {
+                ERC20 token = ERC20(assetAddresses[i]);
+                (bool success, bytes memory returnData) =
+                    address(token).call( // This creates a low level call to the token
+                        abi.encodePacked( // This encodes the function to call and the parameters to pass to that function
+                            token.transfer.selector, // This is the function identifier of the function we want to call
+                            abi.encode(msg.sender, assetAmounts[i]) // This encodes the parameter we want to pass to the function
+                        )
+                    );
+                if (!success) {
+                    tokenBalances[tokenId][assetAddresses[i]] = oldBalance;
+                    emit LogWithdrawalError(assetAddresses[i], msg.sender, tokenId);
+                }
+            }
+        }
+
+        emit LogWithdrawal(msg.sender, tokenId);
+    }
+
+    // Prevent wrapping with itself
+    function transferFrom(address _from, address _to, uint256 _tokenId) override public {
+        require(_to != address(this));
+        return super.transferFrom(_from, _to, _tokenId);
     }
 }
