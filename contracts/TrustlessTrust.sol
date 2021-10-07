@@ -11,8 +11,8 @@ contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
     event LogInsufficientBalance(address indexed tokenAddress, address indexed actor, uint indexed tokenId);
     event LogWithdrawalError(address indexed tokenAddress, address indexed actor, uint indexed tokenId);
 
-    // Token id => ERC20 address => ERC20 balance
-    mapping(uint => mapping(address => uint)) tokenBalances;
+    // Token id => token owners => ERC20 address => ERC20 balance
+    mapping(uint => mapping(address => mapping(address => uint))) tokenBalances;
 
     constructor() ERC721PresetMinterPauserAutoId(
         "TLT",
@@ -26,6 +26,10 @@ contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
         _;
     }
 
+    function balanceOf(uint tokenId, address tokenAddress) public returns (uint) {
+        return tokenBalances[tokenId][msg.sender][tokenAddress];
+    }
+
     function deposit(uint tokenId, address[] memory assetAddresses, uint[] memory assetAmounts) public 
         onlyTokenOwner(tokenId) {
         require(assetAddresses.length == assetAmounts.length, "Number of assets and number of amounts must be equal");
@@ -33,7 +37,7 @@ contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
         for (uint i = 0; i < assetLength; i++) {
             ERC20 erc20 = ERC20(assetAddresses[i]);
             require(erc20.transferFrom(msg.sender, address(this), assetAmounts[i]));
-            tokenBalances[tokenId][assetAddresses[i]] += assetAmounts[i];
+            tokenBalances[tokenId][msg.sender][assetAddresses[i]] += assetAmounts[i];
         }
 
         emit LogDeposit(msg.sender, tokenId);
@@ -45,24 +49,25 @@ contract TrustlessTrust is ERC721PresetMinterPauserAutoId {
         require(assetAddresses.length == assetAmounts.length, "Number of assets and number of amounts must be equal");
         for (uint i = 0; i < assetAddresses.length; i++) {
             // Prevent reentrancy
-            uint oldBalance = tokenBalances[tokenId][assetAddresses[i]];
-            tokenBalances[tokenId][assetAddresses[i]] = 0;
+            // uint oldBalance = tokenBalances[tokenId][msg.sender][assetAddresses[i]];
 
-            if (tokenBalances[tokenId][assetAddresses[i]] <= assetAmounts[i]) {
+            if (tokenBalances[tokenId][msg.sender][assetAddresses[i]] < assetAmounts[i]) {
                 emit LogInsufficientBalance(assetAddresses[i], msg.sender, tokenId);
             } else if (assetAddresses[i] != address(0)) {
+                tokenBalances[tokenId][msg.sender][assetAddresses[i]] -= assetAmounts[i];
                 ERC20 token = ERC20(assetAddresses[i]);
-                (bool success, bytes memory returnData) =
-                    address(token).call( // This creates a low level call to the token
-                        abi.encodePacked( // This encodes the function to call and the parameters to pass to that function
-                            token.transfer.selector, // This is the function identifier of the function we want to call
-                            abi.encode(msg.sender, assetAmounts[i]) // This encodes the parameter we want to pass to the function
-                        )
-                    );
-                if (!success) {
-                    tokenBalances[tokenId][assetAddresses[i]] = oldBalance;
-                    emit LogWithdrawalError(assetAddresses[i], msg.sender, tokenId);
-                }
+                require(token.transfer(msg.sender, assetAmounts[i]));
+                // (bool success, bytes memory returnData) =
+                //     address(token).call( // This creates a low level call to the token
+                //         abi.encodePacked( // This encodes the function to call and the parameters to pass to that function
+                //             token.transfer.selector, // This is the function identifier of the function we want to call
+                //             abi.encode(msg.sender, assetAmounts[i]) // This encodes the parameter we want to pass to the function
+                //         )
+                //     );
+                // if (!success) {
+                //     tokenBalances[tokenId][msg.sender][assetAddresses[i]] = oldBalance;
+                //     emit LogWithdrawalError(assetAddresses[i], msg.sender, tokenId);
+                // }
             }
         }
 

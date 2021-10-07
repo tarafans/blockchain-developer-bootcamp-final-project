@@ -6,9 +6,9 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { fab } from '@fortawesome/free-brands-svg-icons'
 import { faCheckSquare, faTimesCircle, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import _ from 'lodash';
 
-import { Table } from "./components/Table.js"
+import { Table, WALLET_VIEW, NFT_VIEW } from "./components/Table.js"
+import Identicon from "./components/Identicon.js"
 
 // Generic ERC20 interface
 import ERC20ABI from "./contracts/ERC20.json";
@@ -88,6 +88,23 @@ class App extends Component {
     window.location.reload();
   }
 
+  depositToken = async (address) => {
+    let token = await new this.state.web3.eth.Contract(
+      this.state.ERC20ABI.abi,
+      address,
+    );
+
+    const balance = await token.methods.balanceOf(this.state.accounts[0]).call();
+    await this.state.trustlessTrust.methods.deposit(this.state.trustlessTrustId, [address], [balance]).send({from : this.state.accounts[0]});
+    window.location.reload();
+  }
+
+  withdrawToken = async (address) => {
+    const balance = await this.state.trustlessTrust.methods.balanceOf(this.state.trustlessTrustId, address).call();
+    await this.state.trustlessTrust.methods.withdraw(this.state.trustlessTrustId, [address], [balance]).send({from : this.state.accounts[0]});
+    window.location.reload();
+  }
+
   componentDidMount = async () => {
     try {
       // Get network provider and web3 instance.
@@ -122,15 +139,13 @@ class App extends Component {
   runExample = async () => {
     const { web3, accounts, supportedTokens, trustlessTrust, trustlessTrustId } = this.state;
 
-
-    console.log(trustlessTrustId);
-
     for (let t of supportedTokens) {
       let token = await new web3.eth.Contract(
         ERC20ABI.abi,
         t.address,
       );
-      t.balance = await token.methods.balanceOf(accounts[0]).call();
+      t.walletBalance = await token.methods.balanceOf(accounts[0]).call();
+      t.nftBalance = await trustlessTrust.methods.balanceOf(trustlessTrustId, t.address).call();
       t.approved = (await token.methods.allowance(accounts[0], trustlessTrust._address).call()) !== '0';
     }
 
@@ -157,7 +172,7 @@ class App extends Component {
           <Button>
             { this.state.accounts[0] ?
               <span>
-                The connected address is: {this.state.accounts[0].substring(0, 8)}[...]
+                The connected address is: {this.state.accounts[0].substring(0, 8)}[...] <Identicon />
               </span>
             :
             <span>
@@ -187,16 +202,23 @@ class App extends Component {
             </li>
           </ul>
 
-          <h2>Mint a new NFT</h2>
+          <h2>Your Trustless Trust</h2>
 
           <Button onClick={()=>mintNewInstance(this.state.accounts[0], this.state.trustlessTrust)} disabled={this.state.trustlessTrustId >= 0}>
             Mint
           </Button>
           <h5>
           { this.state.trustlessTrustId >= 0 ?
+            <div>
               <span>
                 Your TrustlessTrust contract address is {this.state.trustlessTrust._address}[{this.state.trustlessTrustId}]
               </span>
+              <Table 
+                body={this.state.supportedTokens.filter((t) => t.nftBalance > 0)} 
+                withdraw={this.withdrawToken} 
+                view={NFT_VIEW}
+                />
+            </div>
             :
             <span></span>
           }
@@ -204,7 +226,12 @@ class App extends Component {
 
           <h2>Approve and transfer tokens</h2>
           
-          <Table body={this.state.supportedTokens} onClick={this.approveToken} />,
+          <Table 
+            body={this.state.supportedTokens.filter((t) => t.walletBalance > 0)} 
+            approve={this.approveToken} 
+            deposit={this.depositToken} 
+            view={WALLET_VIEW}
+          />,
         </div>
 
         {/* <Sidebar
