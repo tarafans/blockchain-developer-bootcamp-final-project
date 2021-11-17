@@ -1,5 +1,5 @@
-import React, { Component } from "react";
-import { Button } from 'react-bootstrap';
+import React, { Component, useState, useEffect } from "react";
+import { Button, InputGroup, FormControl } from 'react-bootstrap';
 import getWeb3 from "./getWeb3";
 // import Sidebar from "react-sidebar";
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -68,7 +68,8 @@ class App extends Component {
     web3: null, 
     accounts: null, 
     contract: null, 
-    sidebarOpen: false 
+    sidebarOpen: false,
+    assetAddress: null
   };
 
   onSetSidebarOpen = this.onSetSidebarOpen.bind(this);
@@ -231,7 +232,7 @@ class App extends Component {
             approve={this.approveToken} 
             deposit={this.depositToken} 
             view={WALLET_VIEW}
-          />,
+          />
         </div>
 
         {/* <Sidebar
