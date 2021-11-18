@@ -116,6 +116,8 @@ class App extends Component {
 
       // Get the supported contracts
       const networkId = await web3.eth.net.getId();
+      if (networkId === "loading") return;
+
       const supportedTokens = await fetchAllTokens(web3, networkId);
 
       const trustlessTrust = await new web3.eth.Contract(

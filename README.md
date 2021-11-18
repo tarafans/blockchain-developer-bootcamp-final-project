@@ -19,7 +19,7 @@ To compile the contracts, run `truffle migrate --reset`
 
 To run the webapp, run `yarn start` from `/client`
 
-If you're running locally, please make sure your metamask is connected to Ganache (ie, `localhost:7545`) and you've imported the first account from Ganache - the migration script mints mock ERC20s, but doesn't transfer them to any other accounts, and the app only works with a balance of those mock ERC20s
+If you're running locally, please make sure you're using just `localhost:3000` and your metamask is connected to Ganache (ie, `localhost:7545`) and you've imported the first account from Ganache - the migration script mints mock ERC20s, but doesn't transfer them to any other accounts, and the app only works with a balance of those mock ERC20s
 
 ## Testing
 
@@ -32,3 +32,7 @@ This project was pretty hacky, just to prove out the concept. However, for the n
 ## Public ETH account
 
 `0xB18cE756aC866264b1017344E4a921A2733ab43e`
+
+## Public website address
+
+[https://hdahme.github.io/blockchain-developer-bootcamp-final-project/](https://hdahme.github.io/blockchain-developer-bootcamp-final-project/)
