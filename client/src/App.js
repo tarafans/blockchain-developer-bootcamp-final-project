@@ -8,7 +8,6 @@ import { faCheckSquare, faTimesCircle, faChevronRight } from '@fortawesome/free-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 import { Table, WALLET_VIEW, NFT_VIEW } from "./components/Table.js"
-import Identicon from "./components/Identicon.js"
 
 // Generic ERC20 interface
 import ERC20ABI from "./contracts/ERC20.json";
@@ -142,6 +141,8 @@ class App extends Component {
   runExample = async () => {
     const { web3, accounts, supportedTokens, trustlessTrust, trustlessTrustId } = this.state;
 
+    if (!web3 || !accounts) return;
+
     for (let t of supportedTokens) {
       let token = await new web3.eth.Contract(
         ERC20ABI.abi,
@@ -175,7 +176,7 @@ class App extends Component {
           <Button>
             { this.state.accounts[0] ?
               <span>
-                The connected address is: {this.state.accounts[0].substring(0, 8)}[...] <Identicon />
+                The connected address is: {this.state.accounts[0].substring(0, 8)}[...]
               </span>
             :
             <span>

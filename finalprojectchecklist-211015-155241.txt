@@ -41,6 +41,7 @@ Yes
 Yes
 
 10. A screencast of you walking through your project? YES/NO
+Yes
 
 
 Congratulations on finishing your final project!
