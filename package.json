@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "gh-pages": "^3.2.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.2"
   }
 }
